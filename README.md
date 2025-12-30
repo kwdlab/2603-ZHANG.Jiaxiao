@@ -11,8 +11,6 @@ CPU: Apple M1
 
 Compiler: Apple clang 17.0.0 (Xcode Command Line Tools)
 
-Build tools:
-
 liboqs version 0.15.0
 
 wolfSSL version 5.8.4
