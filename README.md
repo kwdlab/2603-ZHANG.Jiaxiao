@@ -14,7 +14,7 @@ liboqs version 0.15.0
 wolfSSL version 5.8.4
 
 # Install / Build
-## Build and install wolfSSL
+### Build and install wolfSSL
 git clone https://github.com/wolfSSL/wolfssl.git
 
 cd wolfssl
