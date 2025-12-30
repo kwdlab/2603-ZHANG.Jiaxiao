@@ -15,6 +15,30 @@ liboqs version 0.15.0
 
 wolfSSL version 5.8.4
 
+# Project Structure
+
+### Directory layout
+Place `liboqs/` and `wolfssl/` under the same parent directory (recommended):
+
+- `<workdir>/liboqs/`   : liboqs source tree (this repository is based on it)
+- `<workdir>/wolfssl/`  : wolfSSL source tree (built and installed to `$HOME/local/wolfssl-mlkem-neon`)
+
+### Custom files (added to liboqs)
+The following custom files are placed under `liboqs/tests/`:
+
+- `liboqs/tests/example_kem_cho.c`
+- `liboqs/tests/kem_ml_kem_liboqs_to_wolfssl_adapter.c`
+- `liboqs/tests/kem_ml_kem_liboqs_to_wolfssl_adapter.h`
+
+### CMake changes
+In `liboqs/tests/CMakeLists.txt`, add the following lines to build the custom benchmark:
+
+```cmake
+# cho tests
+add_executable(example_kem_cho example_kem_cho.c kem_ml_kem_liboqs_to_wolfssl_adapter.c)
+target_link_libraries(example_kem_cho PRIVATE ${TEST_DEPS} wolfssl)
+```
+
 # Install / Build
 ### Build and install wolfSSL
 ```bash
@@ -66,30 +90,6 @@ cmake .. -GNinja \
 ```
 ```bash
 ninja
-```
-
-# Project Structure
-
-## Directory layout
-Place `liboqs/` and `wolfssl/` under the same parent directory (recommended):
-
-- `<workdir>/liboqs/`   : liboqs source tree (this repository is based on it)
-- `<workdir>/wolfssl/`  : wolfSSL source tree (built and installed to `$HOME/local/wolfssl-mlkem-neon`)
-
-## Custom files (added to liboqs)
-The following custom files are placed under `liboqs/tests/`:
-
-- `liboqs/tests/example_kem_cho.c`
-- `liboqs/tests/kem_ml_kem_liboqs_to_wolfssl_adapter.c`
-- `liboqs/tests/kem_ml_kem_liboqs_to_wolfssl_adapter.h`
-
-## CMake changes
-In `liboqs/tests/CMakeLists.txt`, add the following lines to build the custom benchmark:
-
-```cmake
-# cho tests
-add_executable(example_kem_cho example_kem_cho.c kem_ml_kem_liboqs_to_wolfssl_adapter.c)
-target_link_libraries(example_kem_cho PRIVATE ${TEST_DEPS} wolfssl)
 ```
 
 If the build fails, verify that liboqs is linking against the installed wolfSSL
