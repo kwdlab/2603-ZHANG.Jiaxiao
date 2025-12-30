@@ -95,6 +95,16 @@ ninja
 # attention
 If the build fails, verify that liboqs is linking against the installed wolfSSL on your system
 
+```bash
+cd liboqs/build
+otool -L tests/example_kem
+```
+
+```bash
+cd wolfssl/wolfcrypt/benchmark/.libs
+otool -L benchmark
+```
+
 # Run
 ```bash
 ./tests/example_kem_cho
