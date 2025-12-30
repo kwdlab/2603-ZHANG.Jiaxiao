@@ -68,6 +68,11 @@ cmake .. -GNinja \
 ninja
 ```
 
+# Run
+```bash
+./tests/example_kem_cho
+```
+
 # Author
 ZHANG JIAXIAO
 
