@@ -95,29 +95,6 @@ ninja
 # attention
 If the build fails, verify that liboqs is linking against the installed wolfSSL on your system
 
-```bash
-cd liboqs/build
-otool -L tests/example_kem_cho
-
-#出力
-tests/example_kem_cho:
-	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
-	/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib (compatibility version 3.0.0, current version 3.0.0)
-
-```
-
-```bash
-cd wolfssl/wolfcrypt/benchmark
-otool -L benchmark
-
-#出力
-benchmark:
-	/System/Library/Frameworks/Network.framework/Versions/A/Network (compatibility version 1.0.0, current version 5569.1.3)
-	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
-	/System/Library/Frameworks/Security.framework/Versions/A/Security (compatibility version 1.0.0, current version 61901.0.87)
-	/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 4040.1.255)
-```
-
 # Run
 ```bash
 ./tests/example_kem_cho
