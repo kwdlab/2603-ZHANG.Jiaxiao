@@ -20,11 +20,13 @@ wolfSSL version 5.8.4
 ```bash
 git clone https://github.com/wolfSSL/wolfssl.git
 ```
-
+```bash
 cd wolfssl
-
+```
+```bash
 ./autogen.sh
-
+```
+```bash
 ./configure \
   --prefix="$HOME/local/wolfssl-mlkem-neon" \
   --enable-mlkem=yes,cache-a \
@@ -33,9 +35,13 @@ cd wolfssl
   --enable-cryptonly \
   --disable-shared \
   CFLAGS="-O3 -mcpu=apple-m1"
-
+```
+```bash
   make -j"$(sysctl -n hw.ncpu)"
+```
+```bash
 make install
+```
 
 ### Build and install liboqs
 brew install cmake ninja openssl@3 wget doxygen graphviz astyle valgrind
