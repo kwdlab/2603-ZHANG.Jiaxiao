@@ -33,6 +33,22 @@ cd wolfssl
   make -j"$(sysctl -n hw.ncpu)"
 make install
 
+### Build and install liboqs
+ brew install cmake ninja openssl@3 wget doxygen graphviz astyle valgrind
+ pip3 install pytest pytest-xdist pyyaml
+  
+mkdir build
+
+cd build
+
+cmake .. -GNinja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$HOME/local/wolfssl-mlkem-neon" \
+  -DCMAKE_C_FLAGS="-O3 -mcpu=apple-m1 -I$HOME/local/wolfssl-mlkem-neon/include" \
+  -DCMAKE_EXE_LINKER_FLAGS="-L$HOME/local/wolfssl-mlkem-neon/lib"
+  
+ninja
+
 
 # Author
 ZHANG JIAXIAO
