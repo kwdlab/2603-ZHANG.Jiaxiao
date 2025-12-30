@@ -53,3 +53,6 @@ ninja
 
 # Author
 ZHANG JIAXIAO
+
+# License
+MIT
