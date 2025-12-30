@@ -92,6 +92,8 @@ add_executable(example_kem_cho example_kem_cho.c kem_ml_kem_liboqs_to_wolfssl_ad
 target_link_libraries(example_kem_cho PRIVATE ${TEST_DEPS} wolfssl)
 ```
 
+If the build fails, verify that liboqs is linking against the installed wolfSSL
+
 # Run
 ```bash
 ./tests/example_kem_cho
