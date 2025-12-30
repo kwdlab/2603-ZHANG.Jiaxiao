@@ -19,6 +19,7 @@ wolfSSL version 5.8.4
 ### Build and install wolfSSL
 ```bash
 git clone https://github.com/wolfSSL/wolfssl.git
+```
 
 cd wolfssl
 
