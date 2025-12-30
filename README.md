@@ -4,5 +4,5 @@ Implemented an ML-KEM adapter and benchmarking tools to connect liboqs and wolfS
 
 
 
-# 2603-ZHANG.Jiaxiao
-2026年3月卒業  張家小
+# Author
+ZHANG JIAXIAO
