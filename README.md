@@ -99,6 +99,7 @@ If the build fails, verify that liboqs is linking against the installed wolfSSL 
 cd liboqs/build
 otool -L tests/example_kem_cho
 
+#出力
 tests/example_kem_cho:
 	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
 	/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib (compatibility version 3.0.0, current version 3.0.0)
@@ -109,6 +110,7 @@ tests/example_kem_cho:
 cd wolfssl/wolfcrypt/benchmark
 otool -L benchmark
 
+#出力
 benchmark:
 	/System/Library/Frameworks/Network.framework/Versions/A/Network (compatibility version 1.0.0, current version 5569.1.3)
 	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
