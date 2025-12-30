@@ -39,6 +39,8 @@ add_executable(example_kem_cho example_kem_cho.c kem_ml_kem_liboqs_to_wolfssl_ad
 target_link_libraries(example_kem_cho PRIVATE ${TEST_DEPS} wolfssl)
 ```
 
+In my case, I added it at line 67
+
 # Install / Build
 ### Build and install wolfSSL
 ```bash
