@@ -36,10 +36,11 @@ make install
 ### Build and install liboqs
 brew install cmake ninja openssl@3 wget doxygen graphviz astyle valgrind
 pip3 install pytest pytest-xdist pyyaml
-  
-mkdir build
 
-cd build
+git clone -b main https://github.com/open-quantum-safe/liboqs.git
+cd liboqs
+  
+mkdir build && cd build
 
 cmake .. -GNinja \
   -DCMAKE_BUILD_TYPE=Release \
