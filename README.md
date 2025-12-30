@@ -92,7 +92,7 @@ cmake .. -GNinja \
 ninja
 ```
 
-If the build fails, verify that liboqs is linking against the installed wolfSSL
+If the build fails, verify that liboqs is linking against the installed wolfSSL on your system
 
 # Run
 ```bash
