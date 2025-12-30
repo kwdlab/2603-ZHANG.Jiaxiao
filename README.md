@@ -6,6 +6,7 @@ This repository contains an adapter to integrate the ML-KEM implementations of l
 
 # Requirements
 OS: macOS 15.6.1 (Apple Silicon / arm64)
+
 CPU: Apple M1
 Compiler: Apple clang 17.0.0 (Xcode Command Line Tools)
 Build tools:
