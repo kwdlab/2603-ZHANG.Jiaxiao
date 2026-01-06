@@ -1,8 +1,5 @@
 /*
  * example_kem_cho.c
- *
- * liboqsが変換アダプタを経由しwolfSSLを使用できるようにした拡張したコード。
- *
  */
 
 #include <stdbool.h>
@@ -12,8 +9,6 @@
 #include <time.h>
 #include <stdint.h>
 #include <math.h>
-
-//wolfsslのための宣言
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/random.h>
@@ -44,13 +39,6 @@
 #ifndef INVALID_DEVID
 #define INVALID_DEVID -2
 #endif
-
-/* ============================================================================
- *  高精度な時間計測（単調増加タイマ）
- *  - ベンチマークでは「時間が戻らない」「できるだけ高精度」が重要
- *  - macOS: mach_absolute_time（ナノ秒換算）
- *  - Linux等: clock_gettime(CLOCK_MONOTONIC)
- * ============================================================================ */
 
 #ifdef __APPLE__
 // macOS: mach_absolute_time を ns に変換するための timebase を一度だけ初期化
@@ -234,96 +222,77 @@ static void compute_ops_statistics(uint64_t *times, uint64_t count,
     free(ops_array);
 }
 
-//RUN_FOR_SECONDS マクロ
+//RUN_FOR_COUNT マクロ
 
-
-#define RUN_FOR_SECONDS(kem_name, keySize, op_name, seconds, batch, op_stmt) do {     \
-    uint64_t iters = 0;                                                                \
-    const uint64_t t0 = mono_ns();                                                     \
-    const uint64_t limit_ns = (uint64_t)((seconds) * 1e9);                             \
-                                                                                        \
-    /* timing 配列 */                                 \
-    uint64_t capacity = 1000000;                                                       \
-    uint64_t *op_times = (uint64_t*)malloc(capacity * sizeof(uint64_t));              \
-    if (!op_times) {                                                                   \
-        fprintf(stderr, "Failed to allocate timing array\n");                          \
-        ret = -1;                                                                      \
-        goto end;                                                                      \
-    }                                                                                  \
-    uint64_t time_count = 0;                                                           \
-                                                                                        \
-    /* 指定秒数に達するまで batch 回ずつ繰り返す */                                    \
-    while (1) {                                                                        \
-        for (int _i = 0; _i < (batch); _i++) {                                         \
-            uint64_t op_start = mono_ns();                                             \
-            op_stmt;                                                                   \
-            uint64_t op_end = mono_ns();                                               \
-            if (ret != 0) {                                                            \
-                free(op_times);                                                        \
-                goto end;                                                              \
-            }                                                                          \
-            /* 配列が足りなければ拡張 */                                               \
-            if (time_count < capacity) {                                               \
-                op_times[time_count++] = op_end - op_start;                            \
-            } else {                                                                   \
-                capacity *= 2;                                                         \
-                uint64_t *new_times = (uint64_t*)realloc(op_times, capacity * sizeof(uint64_t)); \
-                if (!new_times) {                                                      \
-                    free(op_times);                                                    \
-                    fprintf(stderr, "Failed to reallocate timing array\n");            \
-                    ret = -1;                                                          \
-                    goto end;                                                          \
-                }                                                                      \
-                op_times = new_times;                                                  \
-                op_times[time_count++] = op_end - op_start;                            \
-            }                                                                          \
-            iters++;                                                                   \
-        }                                                                              \
-        if (mono_ns() - t0 >= limit_ns) break;                                         \
-    }                                                                                  \
-                                                                                        \
+#define RUN_FOR_COUNT(kem_name, keySize, op_name, total_iterations, op_stmt) do {      \
+    uint64_t iters = 0;                                                                 \
+    const uint64_t t0 = mono_ns();                                                      \
+                                                                                         \
+    /* timing 配列 */                                                                   \
+    uint64_t capacity = (total_iterations);                                             \
+    uint64_t *op_times = (uint64_t*)malloc(capacity * sizeof(uint64_t));               \
+    if (!op_times) {                                                                    \
+        fprintf(stderr, "Failed to allocate timing array\n");                           \
+        ret = -1;                                                                       \
+        goto end;                                                                       \
+    }                                                                                   \
+    uint64_t time_count = 0;                                                            \
+                                                                                         \
+    /* 200万回実行 */                                                                   \
+    for (uint64_t _iter = 0; _iter < (total_iterations); _iter++) {                    \
+        uint64_t op_start = mono_ns();                                                  \
+        op_stmt;                                                                        \
+        uint64_t op_end = mono_ns();                                                    \
+        if (ret != 0) {                                                                 \
+            free(op_times);                                                             \
+            goto end;                                                                   \
+        }                                                                               \
+        op_times[time_count++] = op_end - op_start;                                     \
+        iters++;                                                                        \
+    }                                                                                   \
+                                                                                         \
     /* 全体経過時間 dt（秒） */                                                        \
-    const uint64_t dt_ns = mono_ns() - t0;                                             \
-    const double dt = (double)dt_ns * 1e-9;                                            \
-                                                                                        \
-    /* 平均指標 */                                                       \
+    const uint64_t dt_ns = mono_ns() - t0;                                              \
+    const double dt = (double)dt_ns * 1e-9;                                             \
+                                                                                         \
+    /* 平均指標 */                                                                      \
     const double ms_per_op = (iters == 0) ? 0.0 : (dt * 1e3) / (double)iters;          \
     const double ops_per_s = (dt == 0.0) ? 0.0 : (double)iters / dt;                   \
-                                                                                        \
+                                                                                         \
     /* 時間統計（ns -> ms 変換して出力） */                                            \
     double mean_ns, median_ns, variance_ns2, stddev_ns, min_ns, max_ns;                \
     compute_statistics(op_times, time_count, &mean_ns, &median_ns, &variance_ns2, &stddev_ns, &min_ns, &max_ns); \
-                                                                                        \
-    double mean_ms = mean_ns * 1e-6;                                                   \
-    double median_ms = median_ns * 1e-6;                                               \
-    double variance_ms2 = variance_ns2 * 1e-12;                                        \
-    double stddev_ms = stddev_ns * 1e-6;                                               \
-    double min_ms = min_ns * 1e-6;                                                     \
-    double max_ms = max_ns * 1e-6;                                                     \
-                                                                                        \
-    /* ops/sec 統計 */                                  \
+                                                                                         \
+    double mean_ms = mean_ns * 1e-6;                                                    \
+    double median_ms = median_ns * 1e-6;                                                \
+    double variance_ms2 = variance_ns2 * 1e-12;                                         \
+    double stddev_ms = stddev_ns * 1e-6;                                                \
+    double min_ms = min_ns * 1e-6;                                                      \
+    double max_ms = max_ns * 1e-6;                                                      \
+                                                                                         \
+    /* ops/sec 統計 */                                                                  \
     double mean_ops, median_ops, variance_ops2, stddev_ops, min_ops, max_ops;          \
     compute_ops_statistics(op_times, time_count, &mean_ops, &median_ops, &variance_ops2, &stddev_ops, &min_ops, &max_ops); \
-                                                                                        \
+                                                                                         \
     printf("%-10s %4d  %-7s %10llu ops took %6.3f sec, avg %0.006f ms, %12.3f ops/sec\n", \
-           (kem_name), (keySize), (op_name),                                           \
-           (unsigned long long)iters, dt, ms_per_op, ops_per_s);                       \
-                                                                                        \
-    /* 時間統計 */                                                               \
-    printf("  Time Statistics:\n");                                                    \
+           (kem_name), (keySize), (op_name),                                            \
+           (unsigned long long)iters, dt, ms_per_op, ops_per_s);                        \
+                                                                                         \
+    /* 時間統計 */                                                                      \
+    printf("  Time Statistics:\n");                                                     \
     printf("    mean=%0.006f ms, median=%0.006f ms, min=%0.006f ms, max=%0.006f ms\n", \
-           mean_ms, median_ms, min_ms, max_ms);                                        \
-    printf("    variance=%0.009f ms², stddev=%0.006f ms\n",                            \
-           variance_ms2, stddev_ms);                                                   \
-                                                                                        \
-    /* ops/sec 統計 */                                                           \
-    printf("  Ops/sec Statistics:\n");                                                 \
+           mean_ms, median_ms, min_ms, max_ms);                                         \
+    printf("    variance=%0.009f ms², stddev=%0.006f ms\n",                             \
+           variance_ms2, stddev_ms);                                                    \
+                                                                                         \
+    /* ops/sec 統計 */                                                                  \
+    printf("  Ops/sec Statistics:\n");                                                  \
     printf("    mean=%0.3f ops/sec, median=%0.3f ops/sec, min=%0.3f ops/sec, max=%0.3f ops/sec\n", \
-           mean_ops, median_ops, min_ops, max_ops);                                    \
-    printf("    variance=%0.3f (ops/sec)², stddev=%0.3f ops/sec\n",                    \
-           variance_ops2, stddev_ops);                                                 \
-                                                                                        \
-    free(op_times);                                                                    \
+           mean_ops, median_ops, min_ops, max_ops);                                     \
+    printf("    variance=%0.3f (ops/sec)², stddev=%0.3f ops/sec\n",                     \
+           variance_ops2, stddev_ops);                                                  \
+                                                                                         \
+    free(op_times);                                                                     \
 } while(0)
 
 
@@ -430,288 +399,7 @@ static OQS_STATUS example_heap(void) {
 }
 
 /* ============================================================================
- *  wolfSSL native benchmark
- *  wolfSSLを実行できるかをテストする
- *  速度をテスト
- * ============================================================================ */
-
-void mlkem_liboqs_wolfssl(int kem_level)
-{
-    int type;
-    const char* name;
-    int keySize;
-
-    /* kem_level（512/768/1024）に応じて wolfSSL のタイプを選択 */
-    switch (kem_level) {
-#ifdef WOLFSSL_WC_ML_KEM_512
-    case 512:
-        type    = WC_ML_KEM_512;
-        keySize = 128;
-        name    = "ML-KEM 512";
-        break;
-#endif
-#ifdef WOLFSSL_WC_ML_KEM_768
-    case 768:
-        type    = WC_ML_KEM_768;
-        keySize = 192;
-        name    = "ML-KEM 768";
-        break;
-#endif
-#ifdef WOLFSSL_WC_ML_KEM_1024
-    case 1024:
-        type    = WC_ML_KEM_1024;
-        keySize = 256;
-        name    = "ML-KEM 1024";
-        break;
-#endif
-    default:
-        fprintf(stderr,
-            "[mlkem_liboqs_wolfssl] unsupported kem_level=%d (use 512/768/1024)\n",
-            kem_level);
-        return;
-    }
-
-    const double seconds = 10.0;
-    const int batch = 64;
-
-    printf("------------------------------------------------------------------------------\n");
-    printf(" example_kem (wolfSSL-like output)\n");
-    printf("------------------------------------------------------------------------------\n");
-    printf("wolfCrypt Benchmark (min %.1f sec each)\n", seconds);
-
-    KyberKey key1;
-    KyberKey key2;
-    WC_RNG   rng;
-    int      ret = 0;
-
-    /* 共有鍵や暗号文、公開鍵バッファ（最大サイズ） */
-    byte   ct[WC_ML_KEM_MAX_CIPHER_TEXT_SIZE];
-    byte   ss[WC_ML_KEM_SS_SZ];
-    byte   pub[WC_ML_KEM_MAX_PUBLIC_KEY_SIZE];
-    word32 pubLen = 0;
-    word32 ctSz   = 0;
-
-    memset(&key1, 0, sizeof(key1));
-    memset(&key2, 0, sizeof(key2));
-
-    /* RNG 初期化（wolfSSL の暗号処理に必要） */
-    ret = wc_InitRng(&rng);
-    if (ret != 0) {
-        fprintf(stderr, "[mlkem_liboqs_wolfssl] wc_InitRng failed (ret=%d)\n", ret);
-        return;
-    }
-
-    /* 1) KeyGen：毎回 Free->Init->MakeKey を行う（初期化含む） */
-    RUN_FOR_SECONDS(name, keySize, "key gen", seconds, batch, ({
-        wc_KyberKey_Free(&key1);
-        ret = wc_KyberKey_Init(type, &key1, HEAP_HINT, INVALID_DEVID);
-        if (ret == 0) ret = wc_KyberKey_MakeKey(&key1, &rng);
-    }));
-
-    /* 2) Encaps のために公開鍵を encode/decode（ここは計測外：準備処理） */
-    ret = wc_KyberKey_PublicKeySize(&key1, &pubLen);
-    if (ret != 0) goto end;
-
-    ret = wc_KyberKey_EncodePublicKey(&key1, pub, pubLen);
-    if (ret != 0) goto end;
-
-    wc_KyberKey_Free(&key2);
-    ret = wc_KyberKey_Init(type, &key2, HEAP_HINT, INVALID_DEVID);
-    if (ret != 0) goto end;
-
-    ret = wc_KyberKey_DecodePublicKey(&key2, pub, pubLen);
-    if (ret != 0) goto end;
-
-    ret = wc_KyberKey_CipherTextSize(&key2, &ctSz);
-    if (ret != 0) goto end;
-
-    /* 3) Encaps */
-    RUN_FOR_SECONDS(name, keySize, "encap", seconds, batch, ({
-        ret = wc_KyberKey_Encapsulate(&key2, ct, ss, &rng);
-    }));
-
-    /* 4) Decaps：先に1回 Encaps して ct を準備してから測る */
-    ret = wc_KyberKey_Encapsulate(&key2, ct, ss, &rng);
-    if (ret != 0) goto end;
-
-    RUN_FOR_SECONDS(name, keySize, "decap", seconds, batch, ({
-        ret = wc_KyberKey_Decapsulate(&key1, ss, ct, ctSz);
-    }));
-
-end:
-    if (ret != 0) {
-        fprintf(stderr, "[mlkem_liboqs_wolfssl] error ret=%d\n", ret);
-    }
-    wc_KyberKey_Free(&key1);
-    wc_KyberKey_Free(&key2);
-    wc_FreeRng(&rng);
-
-    printf("Benchmark complete\n");
-}
-
-/* ============================================================================
- *  相互運用テスト（interop）
- *  - liboqs で作った鍵を wolfSSL 側アダプタで Enc/Dec できるか
- *  - wolfSSL で作った鍵を liboqs で Decaps できるか
- *
- * ※ここでは “秘密鍵/公開鍵/暗号文” のバイト列互換が正しいかの確認が主目的。
- * ============================================================================ */
-
-static OQS_STATUS test_liboqs_key_with_wolfssl(int kem_level) {
-    OQS_KEM *kem = NULL;
-    uint8_t *public_key = NULL;
-    uint8_t *secret_key = NULL;
-    uint8_t *ciphertext = NULL;
-    uint8_t *shared_secret_e = NULL;
-    uint8_t *shared_secret_d = NULL;
-
-    const char *alg_name = NULL;
-    OQS_STATUS rc = OQS_ERROR;
-    int wret;
-
-    switch (kem_level) {
-    case 512:  alg_name = OQS_KEM_alg_ml_kem_512; break;
-    case 768:  alg_name = OQS_KEM_alg_ml_kem_768; break;
-    case 1024: alg_name = OQS_KEM_alg_ml_kem_1024; break;
-    default:
-        fprintf(stderr, "[interop] unsupported kem_level=%d (expected 512/768/1024)\n", kem_level);
-        return OQS_ERROR;
-    }
-
-    kem = OQS_KEM_new(alg_name);
-    if (kem == NULL) {
-        printf("[interop] %s was not enabled at compile-time. skip.\n", alg_name);
-        return OQS_SUCCESS;
-    }
-
-    /* サイズは kem->length_* を使用 */
-    public_key      = OQS_MEM_malloc(kem->length_public_key);
-    secret_key      = OQS_MEM_malloc(kem->length_secret_key);
-    ciphertext      = OQS_MEM_malloc(kem->length_ciphertext);
-    shared_secret_e = OQS_MEM_malloc(kem->length_shared_secret);
-    shared_secret_d = OQS_MEM_malloc(kem->length_shared_secret);
-
-    if (!public_key || !secret_key || !ciphertext || !shared_secret_e || !shared_secret_d) {
-        fprintf(stderr, "[interop] malloc failed in test_liboqs_key_with_wolfssl\n");
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    /* liboqs で鍵生成 */
-    rc = OQS_KEM_keypair(kem, public_key, secret_key);
-    if (rc != OQS_SUCCESS) {
-        fprintf(stderr, "[interop] OQS_KEM_keypair failed\n");
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return rc;
-    }
-
-    /* wolfSSL アダプタで encaps/decaps */
-    wret = oqs_wolf_mlkem_encaps(kem_level, ciphertext, shared_secret_e, public_key);
-    if (wret != 0) {
-        fprintf(stderr, "[interop] oqs_wolf_mlkem_encaps failed (ret=%d)\n", wret);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    wret = oqs_wolf_mlkem_decaps(kem_level, shared_secret_d, ciphertext, secret_key);
-    if (wret != 0) {
-        fprintf(stderr, "[interop] oqs_wolf_mlkem_decaps failed (ret=%d)\n", wret);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    /* 共有鍵が一致すれば OK */
-    if (memcmp(shared_secret_e, shared_secret_d, kem->length_shared_secret) != 0) {
-        fprintf(stderr, "[interop] mismatch: liboqs-key + wolfSSL Encaps/Decaps (ML-KEM-%d)\n", kem_level);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    printf("[interop] liboqs keypair + wolfSSL Encaps/Decaps (ML-KEM-%d) : OK\n", kem_level);
-
-    cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-    return OQS_SUCCESS;
-}
-
-static OQS_STATUS test_wolfssl_key_with_liboqs(int kem_level) {
-    OQS_KEM *kem = NULL;
-    uint8_t *public_key = NULL;
-    uint8_t *secret_key = NULL;
-    uint8_t *ciphertext = NULL;
-    uint8_t *shared_secret_e = NULL;
-    uint8_t *shared_secret_d = NULL;
-
-    const char *alg_name = NULL;
-    OQS_STATUS rc = OQS_ERROR;
-    int wret;
-
-    switch (kem_level) {
-    case 512:  alg_name = OQS_KEM_alg_ml_kem_512; break;
-    case 768:  alg_name = OQS_KEM_alg_ml_kem_768; break;
-    case 1024: alg_name = OQS_KEM_alg_ml_kem_1024; break;
-    default:
-        fprintf(stderr, "[interop] unsupported kem_level=%d (expected 512/768/1024)\n", kem_level);
-        return OQS_ERROR;
-    }
-
-    kem = OQS_KEM_new(alg_name);
-    if (kem == NULL) {
-        printf("[interop] %s was not enabled at compile-time. skip.\n", alg_name);
-        return OQS_SUCCESS;
-    }
-
-    public_key      = OQS_MEM_malloc(kem->length_public_key);
-    secret_key      = OQS_MEM_malloc(kem->length_secret_key);
-    ciphertext      = OQS_MEM_malloc(kem->length_ciphertext);
-    shared_secret_e = OQS_MEM_malloc(kem->length_shared_secret);
-    shared_secret_d = OQS_MEM_malloc(kem->length_shared_secret);
-
-    if (!public_key || !secret_key || !ciphertext || !shared_secret_e || !shared_secret_d) {
-        fprintf(stderr, "[interop] malloc failed in test_wolfssl_key_with_liboqs\n");
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    /* wolfSSL アダプタで鍵生成 */
-    wret = oqs_wolf_mlkem_keypair(kem_level, public_key, secret_key);
-    if (wret != 0) {
-        fprintf(stderr, "[interop] oqs_wolf_mlkem_keypair failed (ret=%d)\n", wret);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    /* wolfSSL アダプタで encaps */
-    wret = oqs_wolf_mlkem_encaps(kem_level, ciphertext, shared_secret_e, public_key);
-    if (wret != 0) {
-        fprintf(stderr, "[interop] oqs_wolf_mlkem_encaps failed (ret=%d)\n", wret);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    /* liboqs 側で decaps */
-    rc = OQS_KEM_decaps(kem, shared_secret_d, ciphertext, secret_key);
-    if (rc != OQS_SUCCESS) {
-        fprintf(stderr, "[interop] OQS_KEM_decaps failed with wolfSSL ct/sk\n");
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return rc;
-    }
-
-    if (memcmp(shared_secret_e, shared_secret_d, kem->length_shared_secret) != 0) {
-        fprintf(stderr, "[interop] mismatch: wolfSSL-key + wolfSSL Encaps / liboqs Decaps (ML-KEM-%d)\n", kem_level);
-        cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-        return OQS_ERROR;
-    }
-
-    printf("[interop] wolfSSL keypair + wolfSSL Encaps / liboqs Decaps (ML-KEM-%d) : OK\n", kem_level);
-
-    cleanup_heap(secret_key, shared_secret_e, shared_secret_d, public_key, ciphertext, kem);
-    return OQS_SUCCESS;
-}
-
-/* ============================================================================
- *  adapter bench（あなたの主目的：アダプタ経由の性能測定）
- *  - oqs_wolf_mlkem_*（アダプタ関数）を使って
- *    keygen / encaps / decaps を wolfCrypt 風の形式で計測
+ *  adapter bench
  * ============================================================================ */
 
 static OQS_STATUS liboqs_wolfssl_adapter(int kem_level) {
@@ -751,13 +439,12 @@ static OQS_STATUS liboqs_wolfssl_adapter(int kem_level) {
         return OQS_ERROR;
     }
 
-    const double seconds = 10.0;
-    const int batch = 64;
+    const uint64_t iterations = 2000000;  // 200万回
 
     printf("------------------------------------------------------------------------------\n");
-    printf(" adapter_bench (wolfSSL-like output)\n");
+    printf(" adapter_bench\n");
     printf("------------------------------------------------------------------------------\n");
-    printf("Benchmark (min %.1f sec each)\n", seconds);
+    printf("Benchmark %llu \n", iterations);
 
     kem = OQS_KEM_new(alg_name);
     if (kem == NULL) {
@@ -778,18 +465,21 @@ static OQS_STATUS liboqs_wolfssl_adapter(int kem_level) {
         goto cleanup;
     }
 
-    /* KeyGen（アダプタ経由：wolfSSLで生成し、liboqs形式のバイト列で返す想定） */
-    RUN_FOR_SECONDS(name, keySize, "key gen", seconds, batch, ({
+    /* KeyGen */
+    printf("\n=== Key Generation ===\n");
+    RUN_FOR_COUNT(name, keySize, "key gen", iterations, ({
         ret = oqs_wolf_mlkem_keypair(kem_level, public_key, secret_key);
     }));
 
-    /* Encaps（アダプタ経由） */
-    RUN_FOR_SECONDS(name, keySize, "encap", seconds, batch, ({
+    /* Encaps */
+    printf("\n=== Encapsulation ===\n");
+    RUN_FOR_COUNT(name, keySize, "encap", iterations, ({
         ret = oqs_wolf_mlkem_encaps(kem_level, ciphertext, shared_secret_e, public_key);
     }));
 
-    /* Decaps（アダプタ経由） */
-    RUN_FOR_SECONDS(name, keySize, "decap", seconds, batch, ({
+    /* Decaps */
+    printf("\n=== Decapsulation ===\n");
+    RUN_FOR_COUNT(name, keySize, "decap", iterations, ({
         ret = oqs_wolf_mlkem_decaps(kem_level, shared_secret_d, ciphertext, secret_key);
     }));
 
@@ -813,6 +503,7 @@ cleanup:
     return rc;
 }
 
+
 /* ============================================================================
  *  main
  * ============================================================================ */
@@ -820,28 +511,17 @@ cleanup:
 int main(void) {
     OQS_init();
 
-//    OQS_init();
-//        if (example_stack() == OQS_SUCCESS && example_heap() == OQS_SUCCESS) {
-//            OQS_destroy();
-//            return EXIT_SUCCESS;
-//        } else {
-//            OQS_destroy();
-//            return EXIT_FAILURE;
-//        }
-    
-    // mlkem_liboqs_wolfssl(768);
+    // Adapter (liboqs -> wolfSSL)
 
-//     アダプタ経由ベンチ
-    (void)liboqs_wolfssl_adapter(512);
     (void)liboqs_wolfssl_adapter(768);
-    (void)liboqs_wolfssl_adapter(1024);
-
+    
     OQS_destroy();
+    
     return 0;
 }
 
 /* ============================================================================
- *  - 秘密鍵や共有鍵はゼロ化してから解放（情報漏えいを防ぐ）
+ *  cleanup functions
  * ============================================================================ */
 
 void cleanup_stack(uint8_t *secret_key, size_t secret_key_len,
